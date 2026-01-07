@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import InputForm from './components/InputForm';
 import LessonPlanViewer from './components/LessonPlanViewer';
@@ -20,7 +19,7 @@ const App: React.FC = () => {
       setPhase('B');
       window.scrollTo(0, 0);
     } catch (err: any) {
-      setError(err.message || 'Có lỗi xảy ra trong quá trình soạn thảo. Vui lòng thử lại.');
+      setError(err.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
@@ -28,7 +27,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
-      {/* Navigation Bar */}
       <nav className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-2xl sticky top-0 z-50 no-print border-b border-blue-400/20">
         <div className="container mx-auto px-6 py-5 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -55,14 +53,13 @@ const App: React.FC = () => {
               <p className="text-[10px] font-bold text-blue-300 uppercase">Trạng thái hệ thống</p>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                <span className="text-xs font-medium">Sẵn sàng (Gemini 3 Pro)</span>
+                <span className="text-xs font-medium">Sẵn sàng (Gemini 2.5 Flash)</span>
               </div>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content Area */}
       <main className="flex-grow container mx-auto px-4 py-10">
         {error && (
           <div className="max-w-4xl mx-auto mb-8 bg-red-50 border-2 border-red-200 text-red-800 px-6 py-4 rounded-2xl shadow-lg flex items-center gap-4 animate-shake" role="alert">
@@ -91,7 +88,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="bg-white py-12 border-t border-slate-200 mt-auto no-print">
         <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="text-left">
@@ -122,9 +118,6 @@ const App: React.FC = () => {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-5px); }
           75% { transform: translateX(5px); }
-        }
-        .lesson-document {
-          font-family: 'Times New Roman Custom', 'Times New Roman', Times, serif !important;
         }
       `}</style>
     </div>
