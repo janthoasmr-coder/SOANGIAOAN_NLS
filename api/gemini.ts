@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 const SCHEMA = {
@@ -54,7 +55,7 @@ const SCHEMA = {
                 properties: {
                   ma: { 
                     type: Type.STRING,
-                    description: "Mã NLS. Quy tắc: Lớp 6-7 dùng đuôi TC1 (VD: 3.1.TC1a); Lớp 8-9 dùng đuôi TC2 (VD: 5.2.TC2b)."
+                    description: "Mã NLS. Quy tắc: Lớp 6-7 dùng đuôi TC1; Lớp 8-9 dùng đuôi TC2."
                   },
                   mo_ta: { type: Type.STRING },
                   dia_chi_tich_hop: {
@@ -168,12 +169,17 @@ const SCHEMA = {
   }
 };
 
-const SYSTEM_INSTRUCTION = `Bạn là Chatbot soạn Kế hoạch bài dạy (giáo án) môn Toán THCS theo Công văn 5512 và tích hợp năng lực số (NLS) theo Công văn 3456/BGDĐT-GDPT năm 2025.
+const SYSTEM_INSTRUCTION = `Bạn là chuyên gia soạn thảo giáo án Toán THCS cấp cao. Nhiệm vụ của bạn là tạo kế hoạch bài dạy chi tiết bám sát Công văn 5512/BGDĐT và tích hợp Năng lực số (NLS) theo Công văn 3456/BGDĐT-GDPT.
 
-QUY TẮC ĐỊNH DẠNG MÃ NĂNG LỰC SỐ (NLS) THEO KHỐI LỚP:
-1) Đối với khối lớp 6 và 7: Mã NLS PHẢI có chứa cụm "TC1" (ví dụ: 1.1.TC1a, 3.1.TC1c).
-2) Đối với khối lớp 8 và 9: Mã NLS PHẢI có chứa cụm "TC2" (ví dụ: 1.2.TC2a, 5.2.TC2b).
-3) Dùng LaTeX ($...$ hoặc $$...$$) cho công thức toán học.`;
+QUY TẮC MÃ NLS:
+- Khối 6-7: Dùng mã TC1 (Ví dụ: 3.1.TC1a).
+- Khối 8-9: Dùng mã TC2 (Ví dụ: 5.2.TC2b).
+
+CẤU TRÚC BẮT BUỘC:
+1. Thông tin chung đầy đủ.
+2. Mục tiêu (Kiến thức, Năng lực, Phẩm chất). Mục Năng lực số phải ghi rõ mã và biểu hiện.
+3. Tiến trình dạy học: Mỗi hoạt động phải có 4 bước (Chuyển giao - Thực hiện - Báo cáo - Kết luận).
+4. Cột Sản phẩm dự kiến phải trình bày lời giải toán học chi tiết bằng LaTeX.`;
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -186,19 +192,26 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Missing inputs' });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const prompt = `Soạn giáo án chi tiết cho bài: ${inputs.ten_bai_day}. Khối lớp: ${inputs.khoi_lop}. Thời lượng: ${inputs.so_tiet} tiết. Ghi chú: ${inputs.ghi_chu || "Không"}.
-    Yêu cầu mã NLS: ${inputs.khoi_lop <= 7 ? "dạng X.Y.TC1x" : "dạng X.Y.TC2x"}.`;
+    // Luôn khởi tạo instance mới để sử dụng API Key mới nhất từ môi trường/dialog
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
+    
+    const prompt = `Hãy soạn giáo án cực kỳ chi tiết cho bài học sau:
+    Tên bài: ${inputs.ten_bai_day}
+    Khối lớp: ${inputs.khoi_lop}
+    Số tiết: ${inputs.so_tiet}
+    Yêu cầu bổ sung: ${inputs.ghi_chu || "Không có"}
+    
+    Yêu cầu: Mã NLS phải chuẩn theo khối lớp (${inputs.khoi_lop <= 7 ? "TC1" : "TC2"}).`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         responseSchema: SCHEMA,
         temperature: 0.1,
-        thinkingConfig: { thinkingBudget: 24000 }
+        thinkingConfig: { thinkingBudget: 32768 } // Ngân sách tối đa cho Pro model để có suy luận sư phạm sâu nhất
       },
     });
 
@@ -206,6 +219,10 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json(result);
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    // Xử lý lỗi đặc thù khi API Key không hợp lệ hoặc không tìm thấy
+    if (error.message?.includes("Requested entity was not found")) {
+      return res.status(404).json({ error: "API Key không hợp lệ hoặc dự án không tồn tại. Vui lòng kết nối lại API Key từ tài khoản trả phí." });
+    }
+    return res.status(500).json({ error: error.message || 'Lỗi hệ thống khi gọi Gemini API' });
   }
 }
